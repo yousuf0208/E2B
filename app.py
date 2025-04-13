@@ -1,28 +1,51 @@
-import requests
 import streamlit as st
+import requests
 from googletrans import Translator
 
-translator = Translator()
+st.set_page_config(page_title="English Synonym + Bangla Meaning", page_icon=":books:", layout="centered")
 
-def get_synonyms(word):
-    url = f"https://api.datamuse.com/words?rel_syn={word}"
-    response = requests.get(url)
-    data = response.json()
-    return [item['word'] for item in data]
+st.markdown("""
+    <style>
+        .main {
+            background-color: #1e1e2f;
+            color: white;
+        }
+        .stTextInput > div > div > input {
+            background-color: #333;
+            color: white;
+        }
+        .stButton > button {
+            background-color: #6c63ff;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+        }
+        .stButton > button:hover {
+            background-color: #574b90;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-def translate_bangla(word):
-    try:
-        result = translator.translate(word, src='en', dest='bn')
-        return result.text
-    except:
-        return "অনুবাদ পাওয়া যায়নি"
-
-st.title("English Synonym + Bangla Meaning")
+st.title("🔍 English Synonym + Bangla Meaning")
 word = st.text_input("Enter an English Word")
 
-if word:
-    synonyms = get_synonyms(word)
-    st.subheader("Synonyms and Bangla Translation:")
-    for syn in synonyms[:5]:
-        bangla = translate_bangla(syn)
-        st.write(f"**{syn}** → {bangla}")
+if st.button("Search"):
+    if word:
+        with st.spinner("Searching..."):
+            try:
+                syn_res = requests.get(f"https://api.datamuse.com/words?rel_syn={word}")
+                synonyms = [w['word'] for w in syn_res.json()][:5]
+
+                if not synonyms:
+                    st.warning("No synonyms found.")
+                else:
+                    translator = Translator()
+                    st.subheader("Results:")
+                    for syn in synonyms:
+                        trans = translator.translate(syn, src="en", dest="bn")
+                        st.markdown(f"- **{syn.capitalize()}** → _{trans.text}_")
+            except Exception as e:
+                st.error("Something went wrong. Please try again later.")
+    else:
+        st.warning("Please enter a word.")
