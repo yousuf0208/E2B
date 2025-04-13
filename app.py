@@ -1,4 +1,4 @@
-// SynoBangla - React App // Author: Yousuf
+# SynoBangla - React App # Author: Yousuf
 
 import { useState, useEffect } from "react"; import { Input } from "@/components/ui/input"; import { Button } from "@/components/ui/button"; import { Card, CardContent } from "@/components/ui/card"; import { Sun, Moon, Loader2 } from "lucide-react"; import { motion } from "framer-motion";
 
