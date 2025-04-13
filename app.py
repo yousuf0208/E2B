@@ -1,51 +1,101 @@
-import streamlit as st
-import requests
-from googletrans import Translator
+// SynoBangla - React App // Author: Yousuf
 
-st.set_page_config(page_title="English Synonym + Bangla Meaning", page_icon=":books:", layout="centered")
+import { useState, useEffect } from "react"; import { Input } from "@/components/ui/input"; import { Button } from "@/components/ui/button"; import { Card, CardContent } from "@/components/ui/card"; import { Sun, Moon, Loader2 } from "lucide-react"; import { motion } from "framer-motion";
 
-st.markdown("""
-    <style>
-        .main {
-            background-color: #1e1e2f;
-            color: white;
-        }
-        .stTextInput > div > div > input {
-            background-color: #333;
-            color: white;
-        }
-        .stButton > button {
-            background-color: #6c63ff;
-            color: white;
-            font-weight: bold;
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-        }
-        .stButton > button:hover {
-            background-color: #574b90;
-        }
-    </style>
-""", unsafe_allow_html=True)
+export default function SynoBanglaApp() { const [word, setWord] = useState(""); const [results, setResults] = useState([]); const [loading, setLoading] = useState(false); const [dark, setDark] = useState(true); const [history, setHistory] = useState(() => { const saved = localStorage.getItem("synobangla-history"); return saved ? JSON.parse(saved) : []; });
 
-st.title("🔍 English Synonym + Bangla Meaning")
-word = st.text_input("Enter an English Word")
+useEffect(() => { localStorage.setItem("synobangla-history", JSON.stringify(history)); }, [history]);
 
-if st.button("Search"):
-    if word:
-        with st.spinner("Searching..."):
-            try:
-                syn_res = requests.get(f"https://api.datamuse.com/words?rel_syn={word}")
-                synonyms = [w['word'] for w in syn_res.json()][:5]
+const handleSearch = async () => { if (!word.trim()) return; setLoading(true); setResults([]);
 
-                if not synonyms:
-                    st.warning("No synonyms found.")
-                else:
-                    translator = Translator()
-                    st.subheader("Results:")
-                    for syn in synonyms:
-                        trans = translator.translate(syn, src="en", dest="bn")
-                        st.markdown(f"- **{syn.capitalize()}** → _{trans.text}_")
-            except Exception as e:
-                st.error("Something went wrong. Please try again later.")
-    else:
-        st.warning("Please enter a word.")
+try {
+  const [synRes, antRes] = await Promise.all([
+    fetch(`https://api.datamuse.com/words?rel_syn=${word}`),
+    fetch(`https://api.datamuse.com/words?rel_ant=${word}`)
+  ]);
+
+  const synJson = await synRes.json();
+  const antJson = await antRes.json();
+
+  const translator = new window.google.translate.TranslateService();
+  const translateWord = async (w) => {
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=bn&dt=t&q=${w}`);
+    const data = await res.json();
+    return data[0][0][0];
+  };
+
+  const synonyms = await Promise.all(
+    synJson.slice(0, 5).map(async (w) => ({
+      type: "Synonym",
+      word: w.word,
+      meaning: await translateWord(w.word)
+    }))
+  );
+
+  const antonyms = await Promise.all(
+    antJson.slice(0, 3).map(async (w) => ({
+      type: "Antonym",
+      word: w.word,
+      meaning: await translateWord(w.word)
+    }))
+  );
+
+  const combined = [...synonyms, ...antonyms];
+  setResults(combined);
+  setHistory(prev => [word, ...prev.filter(w => w !== word)].slice(0, 10));
+} catch (e) {
+  console.error(e);
+} finally {
+  setLoading(false);
+}
+
+};
+
+return ( <div className={dark ? "bg-gray-900 text-white min-h-screen p-4" : "bg-white text-black min-h-screen p-4"}> <div className="flex justify-between items-center mb-4"> <h1 className="text-2xl font-bold">SynoBangla</h1> <Button onClick={() => setDark(!dark)}>{dark ? <Sun /> : <Moon />}</Button> </div>
+
+<div className="flex gap-2 mb-4">
+    <Input
+      placeholder="Enter an English word..."
+      value={word}
+      onChange={(e) => setWord(e.target.value)}
+    />
+    <Button onClick={handleSearch}>Search</Button>
+  </div>
+
+  {loading ? (
+    <div className="flex justify-center items-center mt-10">
+      <Loader2 className="animate-spin" />
+    </div>
+  ) : (
+    <div className="grid gap-2">
+      {results.map((res, i) => (
+        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="rounded-2xl shadow-md">
+            <CardContent className="p-4">
+              <div className="text-lg font-semibold">{res.type}: {res.word}</div>
+              <div className="text-sm italic text-gray-400">{res.meaning}</div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      ))}
+    </div>
+  )}
+
+  {history.length > 0 && (
+    <div className="mt-8">
+      <h2 className="text-xl font-bold mb-2">Search History</h2>
+      <div className="flex flex-wrap gap-2">
+        {history.map((item, i) => (
+          <Button key={i} variant="outline" onClick={() => setWord(item)}>{item}</Button>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <footer className="mt-12 text-center text-xs opacity-60">
+    Made by Yousuf
+  </footer>
+</div>
+
+); }
+
