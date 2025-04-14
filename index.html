@@ -1,25 +1,59 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Speak60 - IELTS Speaking Practice</title>
-
     <link href="https://fonts.googleapis.com/css2?family=Arial:wght@400;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="style.css">
-
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
-
 </head>
-
 <body>
-
     <canvas id="confetti-canvas"></canvas>
-
     
+    <div class="container">
+        <header>
+            <h1>Speak60</h1>
+            <p>Practice IELTS Speaking Part 2 like a pro!</p>
+        </header>
+
+        <div class="card">
+            <div id="topic-display">
+                <h2>Press "Generate Topic" to start</h2>
+            </div>
+            <button id="generate-btn" class="action-btn">Generate Topic</button>
+        </div>
+
+        <div class="card">
+            <div class="timer-container">
+                <div class="visualizer" id="visualizer">
+                    <!-- JavaScript will generate bars here -->
+                </div>
+                <span id="time">01:00</span>
+            </div>
+            <button id="record-btn" class="action-btn">Start Recording</button>
+            <audio id="playback" controls hidden></audio>
+        </div>
+
+        <div class="card">
+            <textarea id="notes" placeholder="Take notes here (Try to organize your thoughts into introduction, main points and conclusion)..."></textarea>
+            <button id="save-btn" class="action-btn">Save Session</button>
+            <button id="history-btn" class="secondary-btn">View History</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Tip: Record yourself and listen back to improve pronunciation</p>
+    </div>
+
+    <div id="history-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Your Practice Sessions</h3>
+            <div id="sessions-list"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
