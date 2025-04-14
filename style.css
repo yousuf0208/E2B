@@ -1,0 +1,27 @@
+/* Base Styles */
+
+body {
+
+    font-family: 'Arial', sans-serif;
+
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+
+    margin: 0;
+
+    padding: 20px;
+
+    color: #2d3748;
+
+    line-height: 1.6;
+
+}
+
+.container {
+
+    max-width: 600px;
+
+    margin: 0 auto;
+
+    padding: 20px;
+
+}
