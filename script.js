@@ -1,216 +1,228 @@
-/* Base Styles */
-body {
-    font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
-    margin: 0;
-    padding: 20px;
-    color: #2d3748;
-    line-height: 1.6;
+// DOM Elements
+const topicDisplay = document.getElementById('topic-display');
+const generateBtn = document.getElementById('generate-btn');
+const timeDisplay = document.getElementById('time');
+const recordBtn = document.getElementById('record-btn');
+const playback = document.getElementById('playback');
+const notes = document.getElementById('notes');
+const saveBtn = document.getElementById('save-btn');
+const historyBtn = document.getElementById('history-btn');
+const visualizer = document.getElementById('visualizer');
+const historyModal = document.getElementById('history-modal');
+const closeBtn = document.querySelector('.close-btn');
+const sessionsList = document.getElementById('sessions-list');
+
+// Topics Database
+const topics = [
+    "Describe a book you recently read",
+    "Talk about a memorable journey",
+    "Describe a skill you want to learn",
+    "Discuss a famous person you admire",
+    "Describe a place you would like to visit",
+    "Talk about an important decision you made",
+    "Describe a childhood memory",
+    "Discuss a tradition in your country"
+];
+
+// Audio Visualization
+let audioContext, analyser, dataArray;
+const bars = [];
+
+// Initialize visualizer bars
+for (let i = 0; i < 10; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = '2px';
+    visualizer.appendChild(bar);
+    bars.push(bar);
 }
 
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
+// Generate Topic with Loading Effect
+generateBtn.addEventListener('click', () => {
+    // Show loading state
+    topicDisplay.innerHTML = '<h2 class="loading">Generating topic...</h2>';
+    generateBtn.disabled = true;
+    
+    setTimeout(() => {
+        const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+        topicDisplay.innerHTML = `<h2>${randomTopic}</h2>`;
+        generateBtn.disabled = false;
+        startTimer(60); // 1-minute preparation timer
+    }, 800);
+});
+
+// Timer Function
+let timerInterval;
+function startTimer(seconds) {
+    clearInterval(timerInterval); // Clear any existing timer
+    timeDisplay.classList.remove('warning');
+    
+    let remaining = seconds;
+    updateTimerDisplay(remaining);
+    
+    timerInterval = setInterval(() => {
+        remaining--;
+        updateTimerDisplay(remaining);
+        
+        if (remaining <= 10) {
+            timeDisplay.classList.add('warning');
+        }
+        
+        if (remaining <= 0) {
+            clearInterval(timerInterval);
+            showConfetti();
+        }
+    }, 1000);
 }
 
-header {
-    text-align: center;
-    margin-bottom: 30px;
+function updateTimerDisplay(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    timeDisplay.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-h1 {
-    color: #2E86AB;
-    margin-bottom: 10px;
+// Confetti Effect
+function showConfetti() {
+    confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+    });
 }
 
-/* Card Styles */
-.card {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 10px;
-    padding: 25px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
+// Recording Functionality
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+
+recordBtn.addEventListener('click', toggleRecording);
+
+async function toggleRecording() {
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setupAudioContext(stream);
+            
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = (e) => {
+                audioChunks.push(e.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                playback.src = URL.createObjectURL(audioBlob);
+                playback.hidden = false;
+                showConfetti();
+                
+                // Stop all tracks in the stream
+                stream.getTracks().forEach(track => track.stop());
+            };
+            
+            mediaRecorder.start();
+            startTimer(120); // 2-minute speaking timer
+            recordBtn.innerHTML = '<span class="pulse">●</span> Stop Recording';
+            isRecording = true;
+        } catch (error) {
+            alert("Could not access microphone. Please check permissions.");
+            console.error("Recording error:", error);
+        }
+    } else {
+        mediaRecorder.stop();
+        recordBtn.textContent = "Start Recording";
+        isRecording = false;
+    }
 }
 
-.card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+function setupAudioContext(stream) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    analyser.fftSize = 64;
+    
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    updateVisualizer();
 }
 
-/* Button Styles */
-button {
-    border: none;
-    border-radius: 5px;
-    padding: 12px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    margin-top: 15px;
-    font-weight: bold;
+function updateVisualizer() {
+    if (!analyser) return;
+    
+    requestAnimationFrame(updateVisualizer);
+    analyser.getByteFrequencyData(dataArray);
+    
+    bars.forEach((bar, i) => {
+        const value = dataArray[i] || 0;
+        const height = Math.max(2, value / 2);
+        bar.style.height = `${height}px`;
+        bar.style.backgroundColor = `hsl(${200 + (value / 2)}, 100%, 50%)`;
+    });
 }
 
-.action-btn {
-    background-color: #2E86AB;
-    color: white;
-    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11);
-}
-
-.action-btn:hover {
-    background-color: #1a6a8f;
-    transform: translateY(-2px);
-    box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1);
-}
-
-.secondary-btn {
-    background-color: #f0f0f0;
-    color: #333;
-}
-
-.secondary-btn:hover {
-    background-color: #e0e0e0;
-}
-
-/* Timer Styles */
-.timer-container {
-    text-align: center;
-    margin: 20px 0;
-}
-
-#time {
-    font-size: 48px;
-    font-weight: bold;
-    display: block;
-    margin: 15px 0;
-}
-
-.timer.warning {
-    color: #e53e3e;
-    animation: pulse 1s infinite;
-}
-
-/* Visualizer Styles */
-.visualizer {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    height: 60px;
-    margin-bottom: 15px;
-}
-
-.visualizer .bar {
-    width: 6px;
-    margin: 0 2px;
-    background-color: #2E86AB;
-    border-radius: 3px;
-    transition: height 0.2s ease;
-}
-
-/* Textarea Styles */
-textarea {
-    width: 100%;
-    height: 120px;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    resize: none;
-    font-family: 'Arial', sans-serif;
-    margin-bottom: 10px;
-    transition: border 0.3s ease;
-}
-
-textarea:focus {
-    border-color: #2E86AB;
-    outline: none;
-}
-
-/* Footer Styles */
-.footer {
-    text-align: center;
-    margin-top: 30px;
-    color: #666;
-    font-size: 14px;
-}
-
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 10% auto;
-    padding: 25px;
-    border-radius: 10px;
-    width: 80%;
-    max-width: 600px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.close-btn {
-    float: right;
-    font-size: 24px;
-    cursor: pointer;
-}
-
-/* Session Item Styles */
-.session-item {
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-}
-
-.session-item h4 {
-    margin-top: 0;
-    color: #2E86AB;
-}
-
-.session-item p {
-    white-space: pre-wrap;
-}
-
-/* Animations */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.pulse {
-    animation: pulse 1.5s infinite;
-    display: inline-block;
-    color: #e53e3e;
-}
-
-/* Responsive Design */
-@media (max-width: 480px) {
-    .container {
-        padding: 15px;
+// Save Session
+saveBtn.addEventListener('click', () => {
+    const topic = topicDisplay.querySelector('h2')?.textContent || "No topic selected";
+    const noteText = notes.value.trim();
+    
+    if (!noteText) {
+        alert("Please add some notes before saving!");
+        return;
     }
     
-    .card {
-        padding: 20px;
+    const sessionData = {
+        topic,
+        notes: noteText,
+        date: new Date().toLocaleString(),
+        audioUrl: playback.src || null
+    };
+    
+    const sessions = JSON.parse(localStorage.getItem('speak60_sessions')) || [];
+    sessions.unshift(sessionData); // Add new session to beginning
+    localStorage.setItem('speak60_sessions', JSON.stringify(sessions));
+    
+    alert("Session saved successfully!");
+    notes.value = "";
+});
+
+// History Modal
+historyBtn.addEventListener('click', showHistoryModal);
+closeBtn.addEventListener('click', hideHistoryModal);
+
+function showHistoryModal() {
+    const sessions = JSON.parse(localStorage.getItem('speak60_sessions')) || [];
+    
+    if (sessions.length === 0) {
+        sessionsList.innerHTML = "<p>No saved sessions yet.</p>";
+    } else {
+        sessionsList.innerHTML = sessions.map((session, index) => `
+            <div class="session-item">
+                <h4>${session.topic}</h4>
+                <small>${session.date}</small>
+                <p>${session.notes}</p>
+                ${session.audioUrl ? `<audio src="${session.audioUrl}" controls></audio>` : ''}
+            </div>
+        `).join('');
     }
     
-    #time {
-        font-size: 36px;
-    }
-    
-    button {
-        padding: 10px 15px;
-    }
+    historyModal.style.display = "block";
 }
+
+function hideHistoryModal() {
+    historyModal.style.display = "none";
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', (e) => {
+    if (e.target === historyModal) {
+        hideHistoryModal();
+    }
+});
+
+// Initialize audio context on first user interaction
+document.addEventListener('click', () => {
+    if (!audioContext) {
+        // Create a silent audio context to avoid auto-play issues
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}, { once: true });
